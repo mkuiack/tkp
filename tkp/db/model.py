@@ -1,3 +1,12 @@
+"""
+The SQLAlchemy model definition.
+
+revision history:
+
+ 38 - add varmetric table
+ 37 - add forcedfits_count column to runningcatalog
+ 36 - switch to SQLAlchemy schema initialisation
+"""
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index,\
     Integer, SmallInteger, String, text, Sequence
@@ -7,7 +16,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION as Double
 
 
-SCHEMA_VERSION = 36
+SCHEMA_VERSION = 38
 
 Base = declarative_base()
 metadata = Base.metadata
@@ -87,6 +96,12 @@ class Dataset(Base):
     description = Column(String(100), nullable=False)
     node = Column(SmallInteger, nullable=False, server_default=text("1"))
     nodes = Column(SmallInteger, nullable=False, server_default=text("1"))
+
+
+# extractedsource types
+BLIND_FIT = 0
+FORCED_FIT = 1
+MONITORED_FIT = 2
 
 
 class Extractedsource(Base):
@@ -289,10 +304,37 @@ class Runningcatalog(Base):
     z = Column(Double, nullable=False, index=True)
     inactive = Column(Boolean, nullable=False, server_default=text("false"))
     mon_src = Column(Boolean, nullable=False, server_default=text("false"))
+    forcedfits_count = Column(Integer, server_default=text("0"))
 
     extractedsources = relationship('Extractedsource',
                                     secondary='assocxtrsource',
                                     backref='runningcatalogs')
+
+    varmetric = relationship("Varmetric", uselist=False, backref="runcat")
+
+
+class Varmetric(Base):
+    __tablename__ = 'varmetric'
+
+    id = Column(Integer, primary_key=True)
+
+    runcat_id = Column('runcat', ForeignKey('runningcatalog.id'),
+                       nullable=False, index=True)
+
+    v_int = Column(Double, index=True)
+    eta_int = Column(Double)
+
+    band_id = Column('band', ForeignKey('frequencyband.id'), nullable=False,
+                     index=True)
+    band = relationship('Frequencyband')
+
+    newsource = Column(Integer)
+    sigma_rms_max = Column(Double, index=True)
+    sigma_rms_min = Column(Double, index=True)
+    lightcurve_max = Column(Double, index=True)
+    lightcurve_avg = Column(Double, index=True)
+    lightcurve_median = Column(Double, index=True)
+
 
 class RunningcatalogFlux(Base):
     __tablename__ = 'runningcatalog_flux'
